@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	domain "github.com/magabrotheeeer/go-chat/internal/chat/domain/entities"
 	"github.com/magabrotheeeer/go-chat/internal/chat/infrastructure/persistence"
-	localwebsocket "github.com/magabrotheeeer/go-chat/internal/chat/infrastructure/websocket"
+	"github.com/magabrotheeeer/go-chat/internal/chat/infrastructure/wsserver"
 )
 
 func connectDB() *pgxpool.Pool {
@@ -28,7 +28,7 @@ func main() {
 	msgRepo := persistence.NewPostgresMessageRepository(dbpool)
 	_ = persistence.NewPostgresRoomRepository(dbpool)
 
-	hub := localwebsocket.NewHub()
+	hub := wsserver.NewHub()
 	go hub.Run()
 
 	router.GET("/rooms/:roomID/messages", func(c *gin.Context) {
@@ -51,7 +51,7 @@ func main() {
 			log.Println("Failed to set WebSocket upgrade:", err)
 			return
 		}
-		client := &localwebsocket.Client{RoomID: roomID, Send: make(chan *domain.Message)}
+		client := &wsserver.Client{RoomID: roomID, Send: make(chan *domain.Message)}
 		hub.RegisterClient(client)
 
 		// Запускаем горутины для чтения и записи
