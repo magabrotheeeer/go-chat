@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/magabrotheeeer/go-chat/config"
 	domain "github.com/magabrotheeeer/go-chat/internal/chat/domain/entities"
 	"github.com/magabrotheeeer/go-chat/internal/chat/infrastructure/persistence"
 	"github.com/magabrotheeeer/go-chat/internal/chat/infrastructure/wsserver"
@@ -22,6 +23,7 @@ func connectDB() *pgxpool.Pool {
 }
 
 func main() {
+	_ = config.MustLoad()
 	router := gin.Default()
 
 	dbpool := connectDB()
