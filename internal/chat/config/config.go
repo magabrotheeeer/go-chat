@@ -11,6 +11,12 @@ import (
 type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
+	Volumes  string         `yaml:"-"` // из env
+	App      AppConfig
+}
+
+type AppConfig struct {
+	Port string `yaml:"port"`
 }
 
 type DatabaseConfig struct {
@@ -20,6 +26,7 @@ type DatabaseConfig struct {
 	User       string `yaml:"-"` // из env
 	Password   string `yaml:"-"` // из env
 	Connection string `yaml:"-"` // из env
+	Data       string `yaml:"-"` // из env
 	SSLMode    string `yaml:"ssl_mode"`
 }
 
@@ -53,6 +60,18 @@ func MustLoad() *Config {
 	cfg.Database.Connection = os.Getenv("POSTGRES_CONNECTION")
 	if cfg.Database.Connection == "" {
 		log.Fatal("POSTGRES_CONNECTION is not set")
+	}
+	cfg.Database.Data = os.Getenv("POSTGRES_DATA")
+	if cfg.Database.Data == "" {
+		log.Fatal("POSTGRES_DATA is not set")
+	}
+	cfg.Volumes = os.Getenv("CONFIG_PATH_VOLUMES")
+	if cfg.Volumes == "" {
+		log.Fatal("CONFIG_PATH_VOLUMES is not set")
+	}
+	cfg.App.Port = os.Getenv("CHAT_PORT")
+	if cfg.App.Port == "" {
+		log.Fatal("CHAT_PORT is not set")
 	}
 	return &cfg
 }
