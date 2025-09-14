@@ -1,0 +1,34 @@
+services:
+  db: 
+    image: postgres:17
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+    - "${POSTGRES_PORT}:5432"
+    volumes:
+      - "${POSTGRES_DATA}:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  chat:
+    build:
+      context: .
+      dockerfile: ./cmd/chat/Dockerfile
+    env_file:
+      - .env
+    restart: always
+    environment:
+      - CONFIG_PATH=${CONFIG_PATH}
+    ports:
+      - "${CHAT_PORT}:8080"
+    depends_on:
+      db:
+       condition: service_healthy
+    volumes:
+      - "${CONFIG_PATH_VOLUMES}:/config/config.yaml:ro"
