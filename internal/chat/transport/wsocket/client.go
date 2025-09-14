@@ -6,13 +6,22 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	repository "github.com/magabrotheeeer/go-chat/internal/chat/domain/repositories"
 	entities "github.com/magabrotheeeer/go-chat/internal/chat/domain/entities"
 )
 
 type Client struct {
 	RoomID string
 	Send   chan *entities.Message
+}
+
+type MessageRepository interface {
+	Save(ctx context.Context, msg *entities.Message) error
+	FindByRoom(ctx context.Context, roomID string) ([]*entities.Message, error)
+}
+
+type RoomRepository interface {
+	Create(ctx context.Context, room *string) error
+	FindByID(ctx context.Context, roomID string) (*string, error)
 }
 
 const (
@@ -35,7 +44,7 @@ var upgrader = websocket.Upgrader{
 }
 
 // ReadPump перекачивает сообщения из WebSocket соединения в hub
-func (c *Client) ReadPump(conn *websocket.Conn, msgRepo repository.MessageRepository, hub *Hub) {
+func (c *Client) ReadPump(conn *websocket.Conn, msgRepo MessageRepository, hub *Hub) {
 	defer func() {
 		hub.UnregisterClient(c)
 		conn.Close()
