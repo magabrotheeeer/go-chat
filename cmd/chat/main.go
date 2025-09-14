@@ -8,14 +8,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/magabrotheeeer/go-chat/config"
-	domain "github.com/magabrotheeeer/go-chat/internal/chat/domain/entities"
-	"github.com/magabrotheeeer/go-chat/internal/chat/infrastructure/persistence"
-	"github.com/magabrotheeeer/go-chat/internal/chat/infrastructure/wsserver"
+	"github.com/magabrotheeeer/go-chat/internal/chat/config"
+	"github.com/magabrotheeeer/go-chat/internal/chat/database"
+	"github.com/magabrotheeeer/go-chat/internal/chat/domain"
+	"github.com/magabrotheeeer/go-chat/internal/chat/transport/wsocket"
 )
 
-func connectDB() *pgxpool.Pool {
-	pool, err := pgxpool.New(context.Background(), "postgres://user:password@localhost:5432/chatdb")
+func connectDB(connection string) *pgxpool.Pool {
+	pool, err := pgxpool.New(context.Background(), connection)
 	if err != nil {
 		log.Fatalf("Unable to connect to DB: %v", err)
 	}
@@ -23,14 +23,14 @@ func connectDB() *pgxpool.Pool {
 }
 
 func main() {
-	_ = config.MustLoad()
+	cfg := config.MustLoad()
 	router := gin.Default()
 
-	dbpool := connectDB()
-	msgRepo := persistence.NewPostgresMessageRepository(dbpool)
-	_ = persistence.NewPostgresRoomRepository(dbpool)
+	dbpool := connectDB(cfg.Database.Connection)
+	msgRepo := database.NewPostgresMessageRepository(dbpool)
+	_ = database.NewPostgresRoomRepository(dbpool)
 
-	hub := wsserver.NewHub()
+	hub := wsocket.NewHub()
 	go hub.Run()
 
 	router.GET("/rooms/:roomID/messages", func(c *gin.Context) {
@@ -53,7 +53,7 @@ func main() {
 			log.Println("Failed to set WebSocket upgrade:", err)
 			return
 		}
-		client := &wsserver.Client{RoomID: roomID, Send: make(chan *domain.Message)}
+		client := &wsocket.Client{RoomID: roomID, Send: make(chan *domain.Message)}
 		hub.RegisterClient(client)
 
 		// Запускаем горутины для чтения и записи
