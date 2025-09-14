@@ -3,7 +3,7 @@ package wsocket
 import (
 	"sync"
 
-	entities "github.com/magabrotheeeer/go-chat/internal/chat/domain/entities"
+	"github.com/magabrotheeeer/go-chat/internal/chat/domain"
 )
 
 type Hub struct {
@@ -11,7 +11,7 @@ type Hub struct {
 	rooms      map[string]map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
-	broadcast  chan *entities.Message
+	broadcast  chan *domain.Message
 }
 
 func NewHub() *Hub {
@@ -19,7 +19,7 @@ func NewHub() *Hub {
 		rooms:      make(map[string]map[*Client]bool),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
-		broadcast:  make(chan *entities.Message),
+		broadcast:  make(chan *domain.Message),
 	}
 }
 
@@ -31,7 +31,7 @@ func (h *Hub) UnregisterClient(client *Client) {
 	h.unregister <- client
 }
 
-func (h *Hub) BroadcastMessage(msg *entities.Message) {
+func (h *Hub) BroadcastMessage(msg *domain.Message) {
 	h.broadcast <- msg
 }
 

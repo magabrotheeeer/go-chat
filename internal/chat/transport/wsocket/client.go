@@ -6,17 +6,17 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	entities "github.com/magabrotheeeer/go-chat/internal/chat/domain/entities"
+	"github.com/magabrotheeeer/go-chat/internal/chat/domain"
 )
 
 type Client struct {
 	RoomID string
-	Send   chan *entities.Message
+	Send   chan *domain.Message
 }
 
 type MessageRepository interface {
-	Save(ctx context.Context, msg *entities.Message) error
-	FindByRoom(ctx context.Context, roomID string) ([]*entities.Message, error)
+	Save(ctx context.Context, msg *domain.Message) error
+	FindByRoom(ctx context.Context, roomID string) ([]*domain.Message, error)
 }
 
 type RoomRepository interface {
@@ -58,7 +58,7 @@ func (c *Client) ReadPump(conn *websocket.Conn, msgRepo MessageRepository, hub *
 	})
 
 	for {
-		var msg entities.Message
+		var msg domain.Message
 		err := conn.ReadJSON(&msg)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
