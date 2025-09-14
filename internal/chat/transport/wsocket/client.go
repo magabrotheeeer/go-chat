@@ -38,11 +38,6 @@ const (
 	maxMessageSize = 512
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
-
 // ReadPump перекачивает сообщения из WebSocket соединения в hub
 func (c *Client) ReadPump(conn *websocket.Conn, msgRepo MessageRepository, hub *Hub) {
 	defer func() {
