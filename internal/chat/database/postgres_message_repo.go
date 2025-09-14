@@ -1,10 +1,10 @@
-package persistence
+package database
 
 import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	domain "github.com/magabrotheeeer/go-chat/internal/chat/domain/entities"
+	"github.com/magabrotheeeer/go-chat/internal/chat/domain"
 )
 
 type PostgresMessageRepository struct {
