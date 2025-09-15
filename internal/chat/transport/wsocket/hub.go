@@ -8,7 +8,7 @@ import (
 
 type Hub struct {
 	mu         sync.RWMutex
-	rooms      map[string]map[*Client]bool
+	chats      map[string]map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
 	broadcast  chan *domain.Message
@@ -16,7 +16,7 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
-		rooms:      make(map[string]map[*Client]bool),
+		chats:      make(map[string]map[*Client]bool),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		broadcast:  make(chan *domain.Message),
@@ -40,15 +40,15 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.register:
 			h.mu.Lock()
-			if h.rooms[client.RoomID] == nil {
-				h.rooms[client.RoomID] = make(map[*Client]bool)
+			if h.chats[client.ChatID] == nil {
+				h.chats[client.ChatID] = make(map[*Client]bool)
 			}
-			h.rooms[client.RoomID][client] = true
+			h.chats[client.ChatID][client] = true
 			h.mu.Unlock()
 
 		case client := <-h.unregister:
 			h.mu.Lock()
-			if clients, ok := h.rooms[client.RoomID]; ok {
+			if clients, ok := h.chats[client.ChatID]; ok {
 				delete(clients, client)
 				close(client.Send)
 			}
@@ -56,7 +56,7 @@ func (h *Hub) Run() {
 
 		case msg := <-h.broadcast:
 			h.mu.RLock()
-			if clients, ok := h.rooms[msg.RoomID]; ok {
+			if clients, ok := h.chats[msg.RoomID]; ok {
 				for client := range clients {
 					select {
 					case client.Send <- msg:

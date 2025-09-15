@@ -5,23 +5,19 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/magabrotheeeer/go-chat/internal/chat/domain"
 )
 
 type Client struct {
-	RoomID string
+	ChatID string
 	Send   chan *domain.Message
 }
 
 type MessageRepository interface {
 	Save(ctx context.Context, msg *domain.Message) error
-	FindByRoom(ctx context.Context, roomID string) ([]*domain.Message, error)
-}
-
-type RoomRepository interface {
-	Create(ctx context.Context, room *string) error
-	FindByID(ctx context.Context, roomID string) (*string, error)
+	FindByChat(ctx context.Context, chatID string) ([]*domain.Message, error)
 }
 
 const (
@@ -62,15 +58,18 @@ func (c *Client) ReadPump(conn *websocket.Conn, msgRepo MessageRepository, hub *
 			break
 		}
 
-		// Сохраняем сообщение в базу данных
-		msg.RoomID = c.RoomID
+		// Генерируем UUID для сообщения и устанавливаем chatID
+		msg.ID = uuid.New().String()
+		msg.RoomID = c.ChatID
+		msg.CreatedAt = time.Now()
+
 		err = msgRepo.Save(context.Background(), &msg)
 		if err != nil {
 			log.Printf("Error saving message: %v", err)
 			continue
 		}
 
-		// Отправляем сообщение всем клиентам в комнате
+		// Отправляем сообщение всем клиентам в чате
 		hub.BroadcastMessage(&msg)
 	}
 }

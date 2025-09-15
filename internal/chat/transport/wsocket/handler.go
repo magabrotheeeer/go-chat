@@ -17,23 +17,23 @@ var upgrader = websocket.Upgrader{
 }
 
 type Handler struct {
-	logger *slog.Logger
+	logger  *slog.Logger
 	hub     *Hub
 	msgRepo MessageRepository
 }
 
 func NewHandler(hub *Hub, msgRepo MessageRepository, logger *slog.Logger) *Handler {
 	return &Handler{
-		logger: logger,
+		logger:  logger,
 		hub:     hub,
 		msgRepo: msgRepo,
 	}
 }
 
 func (h *Handler) HandleWebSocket(c *gin.Context) {
-	roomID := c.Param("roomID")
-	if roomID == "" {
-		h.logger.Error("failed to find param roomID")
+	chatID := c.Param("chatID")
+	if chatID == "" {
+		h.logger.Error("failed to find param chatID")
 		return
 	}
 
@@ -44,7 +44,7 @@ func (h *Handler) HandleWebSocket(c *gin.Context) {
 	}
 
 	client := &Client{
-		RoomID: roomID,
+		ChatID: chatID,
 		Send:   make(chan *domain.Message),
 	}
 	h.hub.RegisterClient(client)
