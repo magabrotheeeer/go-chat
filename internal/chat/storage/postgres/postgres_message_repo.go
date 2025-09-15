@@ -17,19 +17,19 @@ func NewPostgresMessageRepository(db *sql.DB) *PostgresMessageRepository {
 
 func (r *PostgresMessageRepository) Save(ctx context.Context, msg *domain.Message) error {
 	query := `
-        INSERT INTO messages (id, room_id, author_id, content, created_at)
+        INSERT INTO messages (id, chat_id, author_id, content, created_at)
         VALUES ($1, $2, $3, $4, $5)
     `
 	_, err := r.db.ExecContext(ctx, query, msg.ID, msg.RoomID, msg.AuthorID, msg.Content, msg.CreatedAt)
 	return err
 }
 
-func (r *PostgresMessageRepository) FindByRoom(ctx context.Context, roomID string) ([]*domain.Message, error) {
+func (r *PostgresMessageRepository) FindByChat(ctx context.Context, chatID string) ([]*domain.Message, error) {
 	query := `
-        SELECT id, room_id, author_id, content, created_at
-        FROM messages WHERE room_id = $1 ORDER BY created_at DESC LIMIT 50
+        SELECT id, chat_id, author_id, content, created_at
+        FROM messages WHERE chat_id = $1 ORDER BY created_at DESC LIMIT 50
     `
-	rows, err := r.db.QueryContext(ctx, query, roomID)
+	rows, err := r.db.QueryContext(ctx, query, chatID)
 	if err != nil {
 		return nil, err
 	}
