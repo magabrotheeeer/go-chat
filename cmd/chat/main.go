@@ -2,25 +2,19 @@ package main
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/magabrotheeeer/go-chat/internal/chat/storage/postgres"
+	"github.com/magabrotheeeer/go-chat/internal/chat/storage/postgres/migrations"
 	http "github.com/magabrotheeeer/go-chat/internal/chat/transport/http/handlers"
 	"github.com/magabrotheeeer/go-chat/internal/chat/transport/wsocket"
 	"github.com/magabrotheeeer/go-chat/internal/config"
+	"github.com/magabrotheeeer/go-chat/internal/lib/sl"
 )
 
-func connectDB(connection string, ctx context.Context) *pgxpool.Pool {
-	pool, err := pgxpool.New(ctx, connection)
-	if err != nil {
-		log.Fatalf("Unable to connect to DB: %v", err)
-	}
-	return pool
-}
+
 
 func main() {
 	ctx := context.Background()
@@ -29,15 +23,16 @@ func main() {
 	logger.Info("starting go-chat")
 
 	router := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
 
-	dbpool := connectDB(cfg.Database.Connection, ctx)
-	// err := migrations.RunMigration(ctx, dbpool, "./migrations")
-	// if err != nil {
-	// 	logger.Error("failed to run migrations", sl.Err(err))
-	// 	return		
-	// }
-	msgRepo := postgres.NewPostgresMessageRepository(dbpool)
-	_ = postgres.NewPostgresRoomRepository(dbpool)
+	db := postgres.ConnectDB(cfg.Database.Connection, ctx)
+	err := migrations.RunMigration(ctx, db, "./migrations")
+	if err != nil {
+		logger.Error("failed to run migrations", sl.Err(err))
+		return
+	}
+	msgRepo := postgres.NewPostgresMessageRepository(db)
+	_ = postgres.NewPostgresRoomRepository(db)
 
 	hub := wsocket.NewHub()
 	go hub.Run()
