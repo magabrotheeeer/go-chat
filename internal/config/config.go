@@ -24,6 +24,7 @@ type DatabaseConfig struct {
 	Port       string `yaml:"port"`
 	Name       string `yaml:"name"`
 	User       string `yaml:"-"` // из env
+	DB string `yaml:"-"` // из env
 	Password   string `yaml:"-"` // из env
 	Connection string `yaml:"-"` // из env
 	Data       string `yaml:"-"` // из env
@@ -57,9 +58,17 @@ func MustLoad() *Config {
 	if cfg.Database.Password == "" {
 		log.Fatal("POSTGRES_PASSWORD is not set")
 	}
+	cfg.Database.DB = os.Getenv("POSTGRES_DB")
+	if cfg.Database.DB == "" {
+		log.Fatal("POSTGRES_DB is not set")
+	}
 	cfg.Database.Connection = os.Getenv("POSTGRES_CONNECTION")
 	if cfg.Database.Connection == "" {
 		log.Fatal("POSTGRES_CONNECTION is not set")
+	}
+	cfg.Database.Port = os.Getenv("POSTGRES_PORT")
+	if cfg.Database.Port == "" {
+		log.Fatal("POSTGRES_PORT is not set")
 	}
 	cfg.Database.Data = os.Getenv("POSTGRES_DATA")
 	if cfg.Database.Data == "" {
