@@ -6,15 +6,14 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/lib/pq"
 	"github.com/magabrotheeeer/go-chat/internal/chat/storage/postgres"
 	"github.com/magabrotheeeer/go-chat/internal/chat/storage/postgres/migrations"
-	http "github.com/magabrotheeeer/go-chat/internal/chat/transport/http/handlers"
+	"github.com/magabrotheeeer/go-chat/internal/chat/transport/http/handlers"
 	"github.com/magabrotheeeer/go-chat/internal/chat/transport/wsocket"
 	"github.com/magabrotheeeer/go-chat/internal/config"
 	"github.com/magabrotheeeer/go-chat/internal/lib/sl"
 )
-
-
 
 func main() {
 	ctx := context.Background()
@@ -31,13 +30,29 @@ func main() {
 		logger.Error("failed to run migrations", sl.Err(err))
 		return
 	}
+
 	msgRepo := postgres.NewPostgresMessageRepository(db)
-	_ = postgres.NewPostgresRoomRepository(db)
+	chatRepo := postgres.NewPostgresChatRepository(db)
+
+	chatHandler := handlers.NewChatHandler(chatRepo, logger)
 
 	hub := wsocket.NewHub()
 	go hub.Run()
 
-	router.GET("/rooms/:roomID/messages", http.NewHandler(msgRepo, logger).Read)
-	router.GET("/ws/:roomID", wsocket.NewHandler(hub, msgRepo, logger).HandleWebSocket)
+	router.Static("/static", "./static")
+	router.GET("/", func(c *gin.Context) {
+		c.File("./static/index.html")
+	})
+
+	api := router.Group("/api")
+	{
+		api.POST("/chats", chatHandler.CreateChat)
+		api.GET("/users/:userID/chats", chatHandler.GetUserChats)
+		api.GET("/chats/:chatID", chatHandler.GetChat)
+	}
+
+	router.GET("/ws/chat/:chatID", wsocket.NewHandler(hub, msgRepo, logger).HandleWebSocket)
+
+	logger.Info("server starting on port " + cfg.Server.Port)
 	router.Run(cfg.Server.Port)
 }
