@@ -1,11 +1,13 @@
 package wsocket
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/magabrotheeeer/go-chat/internal/chat/domain"
+	"github.com/magabrotheeeer/go-chat/internal/lib/sl"
 )
 
 var upgrader = websocket.Upgrader{
@@ -15,12 +17,14 @@ var upgrader = websocket.Upgrader{
 }
 
 type Handler struct {
+	logger *slog.Logger
 	hub     *Hub
 	msgRepo MessageRepository
 }
 
-func NewHandler(hub *Hub, msgRepo MessageRepository) *Handler {
+func NewHandler(hub *Hub, msgRepo MessageRepository, logger *slog.Logger) *Handler {
 	return &Handler{
+		logger: logger,
 		hub:     hub,
 		msgRepo: msgRepo,
 	}
@@ -29,11 +33,13 @@ func NewHandler(hub *Hub, msgRepo MessageRepository) *Handler {
 func (h *Handler) HandleWebSocket(c *gin.Context) {
 	roomID := c.Param("roomID")
 	if roomID == "" {
+		h.logger.Error("failed to find param roomID")
 		return
 	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
+		h.logger.Error("failed to upgrade connection to web socket", sl.Err(err))
 		return
 	}
 
