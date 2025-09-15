@@ -2,16 +2,16 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/magabrotheeeer/go-chat/internal/chat/domain"
 )
 
 type PostgresMessageRepository struct {
-	db *pgxpool.Pool
+	db *sql.DB
 }
 
-func NewPostgresMessageRepository(db *pgxpool.Pool) *PostgresMessageRepository {
+func NewPostgresMessageRepository(db *sql.DB) *PostgresMessageRepository {
 	return &PostgresMessageRepository{db: db}
 }
 
@@ -20,7 +20,7 @@ func (r *PostgresMessageRepository) Save(ctx context.Context, msg *domain.Messag
         INSERT INTO messages (id, room_id, author_id, content, created_at)
         VALUES ($1, $2, $3, $4, $5)
     `
-	_, err := r.db.Exec(ctx, query, msg.ID, msg.RoomID, msg.AuthorID, msg.Content, msg.CreatedAt)
+	_, err := r.db.ExecContext(ctx, query, msg.ID, msg.RoomID, msg.AuthorID, msg.Content, msg.CreatedAt)
 	return err
 }
 
@@ -29,7 +29,7 @@ func (r *PostgresMessageRepository) FindByRoom(ctx context.Context, roomID strin
         SELECT id, room_id, author_id, content, created_at
         FROM messages WHERE room_id = $1 ORDER BY created_at DESC LIMIT 50
     `
-	rows, err := r.db.Query(ctx, query, roomID)
+	rows, err := r.db.QueryContext(ctx, query, roomID)
 	if err != nil {
 		return nil, err
 	}
