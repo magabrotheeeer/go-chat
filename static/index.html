@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go Chat - Один на один</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+            margin: 10px 0;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 8px;
+            background-color: #e3f2fd;
+            border-radius: 5px;
+        }
+        .message.own {
+            background-color: #c8e6c9;
+            text-align: right;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .chat-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .chat-item {
+            padding: 10px;
+            margin: 5px 0;
+            background-color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .chat-item:hover {
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Go Chat - Один на один</h1>
+        
+        <!-- Создание чата -->
+        <div class="section">
+            <h3>Создать новый чат</h3>
+            <input type="text" id="user1Id" placeholder="Ваш ID" value="user1">
+            <input type="text" id="user2Id" placeholder="ID собеседника" value="user2">
+            <button onclick="createChat()">Создать чат</button>
+        </div>
+
+        <!-- Список чатов -->
+        <div class="section">
+            <h3>Мои чаты</h3>
+            <button onclick="loadChats()">Обновить список</button>
+            <div id="chatList" class="chat-list"></div>
+        </div>
+
+        <!-- Выбранный чат -->
+        <div class="section">
+            <h3>Чат</h3>
+            <div id="currentChat" style="display: none;">
+                <div id="status" class="status disconnected">Отключен</div>
+                <div id="messages" class="messages"></div>
+                <div>
+                    <input type="text" id="messageInput" placeholder="Введите сообщение..." style="width: 70%;">
+                    <button onclick="sendMessage()">Отправить</button>
+                    <button onclick="disconnect()">Отключиться</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let currentChatId = null;
+        let currentUserId = null;
+
+        // Создание чата
+        async function createChat() {
+            const user1Id = document.getElementById('user1Id').value;
+            const user2Id = document.getElementById('user2Id').value;
+            
+            if (!user1Id || !user2Id) {
+                alert('Введите ID пользователей');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/chats', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user1_id: user1Id,
+                        user2_id: user2Id
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert('Чат создан! ID: ' + data.chat.id);
+                    loadChats();
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            } catch (error) {
+                alert('Ошибка создания чата: ' + error.message);
+            }
+        }
+
+        // Загрузка списка чатов
+        async function loadChats() {
+            const userId = document.getElementById('user1Id').value;
+            if (!userId) {
+                alert('Введите ваш ID');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/users/${userId}/chats`);
+                const data = await response.json();
+                
+                const chatList = document.getElementById('chatList');
+                chatList.innerHTML = '';
+                
+                if (data.chats && data.chats.length > 0) {
+                    data.chats.forEach(chat => {
+                        const chatItem = document.createElement('div');
+                        chatItem.className = 'chat-item';
+                        chatItem.innerHTML = `
+                            <strong>Чат ${chat.id.substring(0, 8)}...</strong><br>
+                            Участники: ${chat.user1_id}, ${chat.user2_id}
+                        `;
+                        chatItem.onclick = () => joinChat(chat.id, userId);
+                        chatList.appendChild(chatItem);
+                    });
+                } else {
+                    chatList.innerHTML = '<div>Нет чатов</div>';
+                }
+            } catch (error) {
+                alert('Ошибка загрузки чатов: ' + error.message);
+            }
+        }
+
+        // Подключение к чату
+        function joinChat(chatId, userId) {
+            if (ws) {
+                ws.close();
+            }
+
+            currentChatId = chatId;
+            currentUserId = userId;
+            
+            document.getElementById('currentChat').style.display = 'block';
+            document.getElementById('messages').innerHTML = '';
+            
+            // Подключение к WebSocket
+            ws = new WebSocket(`ws://localhost:8080/ws/chat/${chatId}`);
+            
+            ws.onopen = function() {
+                updateStatus('Подключен', true);
+                loadMessages();
+            };
+            
+            ws.onmessage = function(event) {
+                const message = JSON.parse(event.data);
+                addMessage(message);
+            };
+            
+            ws.onclose = function() {
+                updateStatus('Отключен', false);
+            };
+            
+            ws.onerror = function(error) {
+                updateStatus('Ошибка подключения', false);
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        // Загрузка сообщений
+        async function loadMessages() {
+            if (!currentChatId) return;
+            
+            try {
+                const response = await fetch(`/api/chats/${currentChatId}/messages`);
+                const data = await response.json();
+                
+                const messagesDiv = document.getElementById('messages');
+                messagesDiv.innerHTML = '';
+                
+                if (data.messages) {
+                    data.messages.forEach(message => {
+                        addMessage(message);
+                    });
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки сообщений:', error);
+            }
+        }
+
+        // Отправка сообщения
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+            
+            if (!content || !ws || ws.readyState !== WebSocket.OPEN) {
+                return;
+            }
+
+            const message = {
+                room_id: currentChatId,
+                author_id: currentUserId,
+                content: content
+            };
+
+            ws.send(JSON.stringify(message));
+            input.value = '';
+        }
+
+        // Добавление сообщения в интерфейс
+        function addMessage(message) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            
+            if (message.author_id === currentUserId) {
+                messageDiv.className += ' own';
+            }
+            
+            messageDiv.innerHTML = `
+                <strong>${message.author_id}:</strong> ${message.content}
+                <br><small>${new Date(message.created_at).toLocaleString()}</small>
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Обновление статуса
+        function updateStatus(text, connected) {
+            const status = document.getElementById('status');
+            status.textContent = text;
+            status.className = 'status ' + (connected ? 'connected' : 'disconnected');
+        }
+
+        // Отключение от чата
+        function disconnect() {
+            if (ws) {
+                ws.close();
+            }
+            document.getElementById('currentChat').style.display = 'none';
+            currentChatId = null;
+        }
+
+
+        // Обработка Enter в поле ввода
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Загрузка чатов при загрузке страницы
+        window.onload = function() {
+            loadChats();
+        };
+    </script>
+</body>
+</html>
