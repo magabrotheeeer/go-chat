@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/magabrotheeeer/go-chat/internal/chat/database"
+	"github.com/magabrotheeeer/go-chat/internal/chat/storage/postgres"
 	http "github.com/magabrotheeeer/go-chat/internal/chat/transport/http/handlers"
 	"github.com/magabrotheeeer/go-chat/internal/chat/transport/wsocket"
 	"github.com/magabrotheeeer/go-chat/internal/config"
@@ -36,8 +36,8 @@ func main() {
 	// 	logger.Error("failed to run migrations", sl.Err(err))
 	// 	return		
 	// }
-	msgRepo := database.NewPostgresMessageRepository(dbpool)
-	_ = database.NewPostgresRoomRepository(dbpool)
+	msgRepo := postgres.NewPostgresMessageRepository(dbpool)
+	_ = postgres.NewPostgresRoomRepository(dbpool)
 
 	hub := wsocket.NewHub()
 	go hub.Run()
